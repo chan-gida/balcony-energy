@@ -32,8 +32,6 @@ class EnsureDeviceToken
             return response()->json(['message' => 'Invalid API token'], 401);
         }
 
-        // リクエストにユーザーIDを直接設定
-        // $request->merge(['user_id' => $device->user_id]);
         // リクエストにdevice_idを直接設定
         $request->merge(['device_id' => $device->id]);
 
