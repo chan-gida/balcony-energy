@@ -18,6 +18,24 @@ class DashboardController extends Controller
         $day = $request->input('day', now()->day);
         $deviceId = $request->input('deviceId', 'all');
 
+        // ユーザーのデバイスを取得
+        $devices = Auth::user()->devices;
+
+        // デバイスの色を動的に生成
+        $deviceColors = ['all' => '#4B5563']; // デフォルトの色（全デバイス）
+        
+        // HSL色空間を使用して、均等に分布した色を生成
+        $devices->each(function ($device, $index) use (&$deviceColors, $devices) {
+            // 色相を均等に分布させる（0-360度）
+            $hue = ($index / $devices->count()) * 360;
+            // 彩度と明度は固定値を使用して見やすい色を生成
+            $saturation = 70; // 70%
+            $lightness = 50;  // 50%
+            
+            // HSLからHEXに変換
+            $deviceColors[$device->id] = $this->hslToHex($hue, $saturation, $lightness);
+        });
+
         // クエリの基本部分
         $query = Generation::query()
             ->when($deviceId !== 'all', function ($query) use ($deviceId) {
@@ -36,7 +54,17 @@ class DashboardController extends Controller
             default => $this->getDailyData($query, $year, $month, $day),
         };
 
+        // デバイスの色を設定
+        $color = $deviceColors[$deviceId] ?? $deviceColors['all'];
+        $data['color'] = $color;
+
+        // CO2削減量と電気代削減量の計算
+        $co2Reduction = $data['total'] * 0.472; // 1kWhあたり0.472kg-CO2として計算
+        $electricityCost = $data['total'] * 27; // 1kWhあたり27円として計算
+
         if ($request->ajax()) {
+            $data['co2Reduction'] = $co2Reduction;
+            $data['electricityCost'] = $electricityCost;
             return response()->json($data);
         }
 
@@ -47,24 +75,38 @@ class DashboardController extends Controller
             'currentYear' => $year,
             'currentMonth' => $month,
             'currentDay' => $day,
-            'devices' => Auth::user()->devices,
+            'devices' => $devices,
             'selectedDevice' => $deviceId,
             'displayType' => $displayType,
+            'deviceColors' => $deviceColors,
+            'co2Reduction' => $co2Reduction,
+            'electricityCost' => $electricityCost,
         ]);
     }
 
     private function getDailyData($query, $year, $month, $day)
     {
         $date = CarbonImmutable::create($year, $month, $day);
-        $data = $query->whereDate('generation_time', $date)
+        
+        // 0時から23時までの全時間帯を作成
+        $hours = collect(range(0, 23))->mapWithKeys(function ($hour) {
+            $timeStr = sprintf('%02d:00', $hour);
+            return [$timeStr => 0];
+        });
+
+        // データベースからの取得結果
+        $dbData = $query->whereDate('generation_time', $date)
             ->orderBy('generation_time')
             ->get()
             ->groupBy(function ($item) {
-                return CarbonImmutable::parse($item->generation_time)->format('H:i');
+                return CarbonImmutable::parse($item->generation_time)->format('H:00');
             })
             ->map(function ($items) {
-                return $items->sum('power') * 0.0005; // kWhに変換
+                return $items->sum('power') * 0.0000005; // kWhに変換
             });
+
+        // 全時間帯のデータを結合（欠損値は0として扱う）
+        $data = $hours->merge($dbData)->sortKeys();
 
         return [
             'labels' => $data->keys()->toArray(),
@@ -88,7 +130,7 @@ class DashboardController extends Controller
                 return CarbonImmutable::parse($item->generation_time)->format('d');
             })
             ->map(function ($items) {
-                return $items->sum('power') * 0.0005;
+                return $items->sum('power') * 0.0000005;
             });
 
         return [
@@ -113,7 +155,7 @@ class DashboardController extends Controller
                 return CarbonImmutable::parse($item->generation_time)->format('m');
             })
             ->map(function ($items) {
-                return $items->sum('power') * 0.0005;
+                return $items->sum('power') * 0.0000005;
             });
 
         return [
@@ -134,7 +176,7 @@ class DashboardController extends Controller
                 return CarbonImmutable::parse($item->generation_time)->format('Y');
             })
             ->map(function ($items) {
-                return $items->sum('power') * 0.0005;
+                return $items->sum('power') * 0.0000005;
             });
 
         return [
@@ -145,5 +187,42 @@ class DashboardController extends Controller
             'average' => $data->avg(),
             'max' => $data->max(),
         ];
+    }
+
+    // HSLカラーをHEXカラーに変換するヘルパーメソッド
+    private function hslToHex($hue, $saturation, $lightness)
+    {
+        $hue /= 360;
+        $saturation /= 100;
+        $lightness /= 100;
+
+        if ($saturation == 0) {
+            $red = $green = $blue = $lightness;
+        } else {
+            $q = $lightness < 0.5 
+                ? $lightness * (1 + $saturation) 
+                : $lightness + $saturation - $lightness * $saturation;
+            $p = 2 * $lightness - $q;
+
+            $red = $this->hueToRgb($p, $q, $hue + 1/3);
+            $green = $this->hueToRgb($p, $q, $hue);
+            $blue = $this->hueToRgb($p, $q, $hue - 1/3);
+        }
+
+        $red = round($red * 255);
+        $green = round($green * 255);
+        $blue = round($blue * 255);
+
+        return sprintf('#%02x%02x%02x', $red, $green, $blue);
+    }
+
+    private function hueToRgb($p, $q, $t)
+    {
+        if ($t < 0) $t += 1;
+        if ($t > 1) $t -= 1;
+        if ($t < 1/6) return $p + ($q - $p) * 6 * $t;
+        if ($t < 1/2) return $q;
+        if ($t < 2/3) return $p + ($q - $p) * (2/3 - $t) * 6;
+        return $p;
     }
 } 

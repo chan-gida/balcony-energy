@@ -75,6 +75,24 @@
                             </p>
                         </div>
                     </div>
+
+                    <!-- CO2削減量と電気代削減量 -->
+                    <div class="mt-4 flex justify-between gap-4">
+                        <div class="flex-1 p-4 bg-green-50 dark:bg-green-900 rounded-lg">
+                            <h3 class="text-lg font-semibold text-green-900 dark:text-green-100">総CO2削減量</h3>
+                            <p class="text-2xl font-bold text-green-900 dark:text-green-100">
+                                <span id="co2Reduction">{{ number_format($co2Reduction, 2) }}</span> kg-CO2
+                            </p>
+                            <p class="text-sm text-green-700 dark:text-green-300">※ 1kWhあたり0.472kg-CO2として計算</p>
+                        </div>
+                        <div class="flex-1 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                            <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100">総電気代削減量</h3>
+                            <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                                <span id="electricityCost">{{ number_format($electricityCost, 0) }}</span> 円
+                            </p>
+                            <p class="text-sm text-blue-700 dark:text-blue-300">※ 1kWhあたり27円として計算</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -92,6 +110,32 @@
                 chart.destroy();
             }
 
+            // 日単位表示の場合のオプション
+            const isDaily = document.getElementById('displayType').value === 'daily';
+            const scales = {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '発電量 (kWh)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: true
+                    },
+                    title: {
+                        display: true,
+                        text: data.unit
+                    },
+                    // 日単位の場合は追加の設定
+                    ticks: isDaily ? {
+                        maxRotation: 45,
+                        minRotation: 45
+                    } : {}
+                }
+            };
+
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -99,9 +143,13 @@
                     datasets: [{
                         label: '発電量',
                         data: data.data,
-                        borderColor: '#4B5563',
-                        backgroundColor: 'rgba(75, 85, 99, 0.1)',
-                        tension: 0.1
+                        borderColor: data.color,
+                        backgroundColor: `${data.color}33`,
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
                     }]
                 },
                 options: {
@@ -110,31 +158,20 @@
                     plugins: {
                         legend: {
                             display: true,
-                            position: 'top'
+                            position: 'right',
+                            align: 'start',
+                            labels: {
+                                boxWidth: 15,
+                                padding: 15
+                            }
                         },
                         tooltip: {
                             mode: 'index',
                             intersect: false,
+                            backgroundColor: data.color + 'CC',
                         }
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: '発電量 (kWh)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: true
-                            },
-                            title: {
-                                display: true,
-                                text: data.unit
-                            }
-                        }
-                    },
+                    scales: scales,
                     interaction: {
                         mode: 'nearest',
                         axis: 'x',
@@ -165,6 +202,8 @@
                 document.getElementById('totalPower').textContent = data.total.toFixed(2);
                 document.getElementById('averagePower').textContent = data.average.toFixed(2);
                 document.getElementById('maxPower').textContent = data.max.toFixed(2);
+                document.getElementById('co2Reduction').textContent = data.co2Reduction.toFixed(2);
+                document.getElementById('electricityCost').textContent = Math.round(data.electricityCost).toLocaleString();
             })
             .catch(error => console.error('Error:', error));
         }
