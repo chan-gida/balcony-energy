@@ -13,12 +13,12 @@
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
+                        {{ __('ホーム') }}
                     </x-nav-link>
 
                     {{-- センサー登録へのリンクを追加 --}}
                     <x-nav-link :href="route('devices.index')" :active="request()->routeIs('devices.index')">
-                        {{ __('Sensors') }}
+                        {{ __('機器情報') }}
                     </x-nav-link>
                 </div>
             </div>
