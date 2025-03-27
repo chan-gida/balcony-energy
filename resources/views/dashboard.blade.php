@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Dashboard') }}
+            {{ __('発電状況') }}
         </h2>
     </x-slot>
 
@@ -112,8 +112,17 @@
                 chart.destroy();
             }
 
+            // 表示タイプを取得
+            const displayType = document.getElementById('displayType').value;
+            
+            // 年単位表示の場合、ラベルを1月から12月に固定
+            let labels = data.labels;
+            if (displayType === 'yearly') {
+                labels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            }
+
             // 日単位表示の場合のオプション
-            const isDaily = document.getElementById('displayType').value === 'daily';
+            const isDaily = displayType === 'daily';
             const scales = {
                 y: {
                     beginAtZero: true,
@@ -141,7 +150,7 @@
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: data.labels,
+                    labels: labels, // 修正したラベルを使用
                     datasets: [{
                         label: '発電量',
                         data: data.data,
