@@ -101,7 +101,7 @@
     @push('scripts')
     <script>
         // APIのURLを定数として定義（サブディレクトリを考慮）
-        const CHART_API_URL = "{{ url('/balcony-energy/chart-data') }}";
+        const CHART_API_URL = "{{ url('/chart-data') }}";
         let chart = null;
 
         // グラフの初期化
