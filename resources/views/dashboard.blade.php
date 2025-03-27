@@ -100,6 +100,8 @@
 
     @push('scripts')
     <script>
+        // APIのURLを定数として定義
+        const CHART_API_URL = "{{ route('chart.data') }}";
         let chart = null;
 
         // グラフの初期化
@@ -188,24 +190,47 @@
                 year: document.getElementById('year').value,
                 month: document.getElementById('month').value,
                 day: document.getElementById('day').value,
-                deviceId: document.getElementById('deviceId').value
+                device: document.getElementById('deviceId').value // deviceIdをdeviceに変更
             });
 
-            fetch(`/dashboard?${params.toString()}`, {
+            // 新しいAPIエンドポイントを使用
+            fetch(`${CHART_API_URL}?${params.toString()}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
-            .then(data => {
-                initChart(data);
-                document.getElementById('totalPower').textContent = data.total.toFixed(2);
-                document.getElementById('averagePower').textContent = data.average.toFixed(2);
-                document.getElementById('maxPower').textContent = data.max.toFixed(2);
-                document.getElementById('co2Reduction').textContent = data.co2Reduction.toFixed(2);
-                document.getElementById('electricityCost').textContent = Math.round(data.electricityCost).toLocaleString();
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
             })
-            .catch(error => console.error('Error:', error));
+            .then(response => {
+                // レスポンス構造の変更に対応
+                initChart({
+                    labels: response.chartData.labels,
+                    data: response.chartData.datasets[0].data,
+                    color: response.chartData.datasets[0].borderColor,
+                    unit: response.unit
+                });
+                
+                // 統計データの更新
+                document.getElementById('totalPower').textContent = response.stats.total.toFixed(2);
+                document.getElementById('averagePower').textContent = response.stats.average.toFixed(2);
+                document.getElementById('maxPower').textContent = response.stats.max.toFixed(2);
+                
+                // CO2と電気代の更新（もし必要なら）
+                if (response.co2Reduction) {
+                    document.getElementById('co2Reduction').textContent = response.co2Reduction.toFixed(2);
+                }
+                if (response.electricityCost) {
+                    document.getElementById('electricityCost').textContent = Math.round(response.electricityCost).toLocaleString();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('データの更新中にエラーが発生しました。');
+            });
         }
 
         // イベントリスナーの設定

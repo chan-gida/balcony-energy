@@ -12,127 +12,155 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $displayType = $request->input('displayType', 'daily');
-        $year = $request->input('year', now()->year);
-        $month = $request->input('month', now()->month);
-        $day = $request->input('day', now()->day);
-        $deviceId = $request->input('deviceId', 'all');
+        try {
+            $displayType = $request->input('displayType', 'daily');
+            $year = $request->input('year', now()->year);
+            $month = $request->input('month', now()->month);
+            $day = $request->input('day', now()->day);
+            $deviceId = $request->input('deviceId', 'all');
 
-        // ユーザーのデバイスを取得
-        $devices = Auth::user()->devices;
+            // ユーザーのデバイスを取得
+            $devices = Auth::user()->devices;
 
-        // デバイスの色を動的に生成
-        $deviceColors = ['all' => '#4B5563']; // デフォルトの色（全デバイス）
-        
-        // HSL色空間を使用して、均等に分布した色を生成
-        $devices->each(function ($device, $index) use (&$deviceColors, $devices) {
-            // 色相を均等に分布させる（0-360度）
-            $hue = ($index / $devices->count()) * 360;
-            // 彩度と明度は固定値を使用して見やすい色を生成
-            $saturation = 70; // 70%
-            $lightness = 50;  // 50%
+            // デバイスの色を動的に生成
+            $deviceColors = ['all' => '#4B5563']; // デフォルトの色（全デバイス）
             
-            // HSLからHEXに変換
-            $deviceColors[$device->id] = $this->hslToHex($hue, $saturation, $lightness);
-        });
-
-        // クエリの基本部分
-        $query = Generation::query()
-            ->when($deviceId !== 'all', function ($query) use ($deviceId) {
-                $query->where('device_id', $deviceId);
-            })
-            ->when($deviceId === 'all', function ($query) {
-                $query->whereIn('device_id', Auth::user()->devices->pluck('id'));
+            // HSL色空間を使用して、均等に分布した色を生成
+            $devices->each(function ($device, $index) use (&$deviceColors, $devices) {
+                // 色相を均等に分布させる（0-360度）
+                $hue = ($index / $devices->count()) * 360;
+                // 彩度と明度は固定値を使用して見やすい色を生成
+                $saturation = 70; // 70%
+                $lightness = 50;  // 50%
+                
+                // HSLからHEXに変換
+                $deviceColors[$device->id] = $this->hslToHex($hue, $saturation, $lightness);
             });
 
-        // 期間に応じたデータの取得
-        $data = match ($displayType) {
-            'daily' => $this->getDailyData($query, $year, $month, $day),
-            'monthly' => $this->getMonthlyData($query, $year, $month),
-            'yearly' => $this->getYearlyData($query, $year),
-            'all' => $this->getAllData($query),
-            default => $this->getDailyData($query, $year, $month, $day),
-        };
+            // クエリの基本部分
+            $query = Generation::query()
+                ->when($deviceId !== 'all', function ($query) use ($deviceId) {
+                    $query->where('device_id', $deviceId);
+                })
+                ->when($deviceId === 'all', function ($query) {
+                    $query->whereIn('device_id', Auth::user()->devices->pluck('id'));
+                });
 
-        // デバイスの色を設定
-        $color = $deviceColors[$deviceId] ?? $deviceColors['all'];
-        $data['color'] = $color;
+            // 期間に応じたデータの取得
+            $data = match ($displayType) {
+                'daily' => $this->getDailyData($query, $year, $month, $day),
+                'monthly' => $this->getMonthlyData($query, $year, $month),
+                'yearly' => $this->getYearlyData($query, $year),
+                'all' => $this->getAllData($query),
+                default => $this->getDailyData($query, $year, $month, $day),
+            };
 
-        // CO2削減量と電気代削減量の計算
-        $co2Reduction = $data['total'] * 0.472; // 1kWhあたり0.472kg-CO2として計算
-        $electricityCost = $data['total'] * 27; // 1kWhあたり27円として計算
+            // デバイスの色を設定
+            $color = $deviceColors[$deviceId] ?? $deviceColors['all'];
+            $data['color'] = $color;
 
-        if ($request->ajax()) {
-            $data['co2Reduction'] = $co2Reduction;
-            $data['electricityCost'] = $electricityCost;
-            return response()->json($data);
+            // CO2削減量と電気代削減量の計算
+            $co2Reduction = $data['total'] * 0.472; // 1kWhあたり0.472kg-CO2として計算
+            $electricityCost = $data['total'] * 27; // 1kWhあたり27円として計算
+
+            if ($request->ajax()) {
+                $data['co2Reduction'] = $co2Reduction;
+                $data['electricityCost'] = $electricityCost;
+                return response()->json($data);
+            }
+
+            // 初期表示用のデータを設定
+            return view('dashboard', [
+                'chartData' => $data,
+                'years' => range(2020, now()->year),
+                'currentYear' => $year,
+                'currentMonth' => $month,
+                'currentDay' => $day,
+                'devices' => $devices,
+                'selectedDevice' => $deviceId,
+                'displayType' => $displayType,
+                'deviceColors' => $deviceColors,
+                'co2Reduction' => $co2Reduction,
+                'electricityCost' => $electricityCost,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Dashboard error: ' . $e->getMessage());
+            
+            if ($request->ajax()) {
+                return response()->json(['error' => 'データの取得に失敗しました'], 500);
+            }
+            
+            return back()->with('error', 'データの取得に失敗しました');
         }
-
-        // 初期表示用のデータを設定
-        return view('dashboard', [
-            'chartData' => $data,
-            'years' => range(2020, now()->year),
-            'currentYear' => $year,
-            'currentMonth' => $month,
-            'currentDay' => $day,
-            'devices' => $devices,
-            'selectedDevice' => $deviceId,
-            'displayType' => $displayType,
-            'deviceColors' => $deviceColors,
-            'co2Reduction' => $co2Reduction,
-            'electricityCost' => $electricityCost,
-        ]);
     }
 
     public function getChartData(Request $request)
     {
-        $displayType = $request->input('displayType', 'daily');
-        $year = $request->input('year', now()->year);
-        $month = $request->input('month', now()->month);
-        $day = $request->input('day', now()->day);
-        $deviceId = $request->input('device', 'all');
+        try {
+            $displayType = $request->input('displayType', 'daily');
+            $year = $request->input('year', now()->year);
+            $month = $request->input('month', now()->month);
+            $day = $request->input('day', now()->day);
+            $deviceId = $request->input('device', 'all');
 
-        $query = Generation::query();
-        
-        // デバイスフィルタリング
-        if ($deviceId !== 'all') {
-            $query->where('device_id', $deviceId);
-        } else {
-            $query->whereIn('device_id', Auth::user()->devices->pluck('id'));
+            // ユーザーのデバイスを取得
+            $devices = Auth::user()->devices;
+
+            // デバイスの色を生成
+            $deviceColors = ['all' => '#4B5563'];
+            $devices->each(function ($device, $index) use (&$deviceColors, $devices) {
+                $hue = ($index / $devices->count()) * 360;
+                $deviceColors[$device->id] = $this->hslToHex($hue, 70, 50);
+            });
+
+            $query = Generation::query()
+                ->when($deviceId !== 'all', function ($query) use ($deviceId) {
+                    $query->where('device_id', $deviceId);
+                })
+                ->when($deviceId === 'all', function ($query) {
+                    $query->whereIn('device_id', Auth::user()->devices->pluck('id'));
+                });
+
+            // データ取得
+            $data = match ($displayType) {
+                'daily' => $this->getDailyData($query, $year, $month, $day),
+                'monthly' => $this->getMonthlyData($query, $year, $month),
+                'yearly' => $this->getYearlyData($query, $year),
+                'all' => $this->getAllData($query),
+                default => $this->getDailyData($query, $year, $month, $day),
+            };
+
+            // デバイスの色を設定
+            $color = $deviceColors[$deviceId] ?? $deviceColors['all'];
+
+            // CO2削減量と電気代削減量の計算
+            $co2Reduction = $data['total'] * 0.472;
+            $electricityCost = $data['total'] * 27;
+
+            return response()->json([
+                'chartData' => [
+                    'labels' => $data['labels'],
+                    'datasets' => [[
+                        'label' => '発電量',
+                        'data' => $data['data'],
+                        'borderColor' => $color,
+                        'backgroundColor' => $color . '33',
+                        'tension' => 0.1
+                    ]]
+                ],
+                'stats' => [
+                    'total' => $data['total'],
+                    'average' => $data['average'],
+                    'max' => $data['max']
+                ],
+                'unit' => $data['unit'],
+                'co2Reduction' => $co2Reduction,
+                'electricityCost' => $electricityCost
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Chart data error: ' . $e->getMessage());
+            return response()->json(['error' => 'データの取得に失敗しました'], 500);
         }
-
-        // 期間に応じたデータの取得
-        $data = match ($displayType) {
-            'daily' => $this->getDailyData($query, $year, $month, $day),
-            'monthly' => $this->getMonthlyData($query, $year, $month),
-            'yearly' => $this->getYearlyData($query, $year),
-            'all' => $this->getAllData($query),
-            default => $this->getDailyData($query, $year, $month, $day),
-        };
-
-        // Chart.js形式のデータに変換
-        $chartData = [
-            'labels' => $data['labels'],
-            'datasets' => [[
-                'label' => '発電量',
-                'data' => $data['data'],
-                'borderColor' => '#4B5563',
-                'backgroundColor' => 'rgba(75, 85, 99, 0.1)',
-                'tension' => 0.1
-            ]]
-        ];
-
-        // 統計データを追加
-        $response = [
-            'chartData' => $chartData,
-            'stats' => [
-                'total' => $data['total'],
-                'average' => $data['average'],
-                'max' => $data['max']
-            ]
-        ];
-
-        return response()->json($response);
     }
 
     private function getDailyData($query, $year, $month, $day)
