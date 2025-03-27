@@ -84,6 +84,57 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function getChartData(Request $request)
+    {
+        $displayType = $request->input('displayType', 'daily');
+        $year = $request->input('year', now()->year);
+        $month = $request->input('month', now()->month);
+        $day = $request->input('day', now()->day);
+        $deviceId = $request->input('device', 'all');
+
+        $query = Generation::query();
+        
+        // デバイスフィルタリング
+        if ($deviceId !== 'all') {
+            $query->where('device_id', $deviceId);
+        } else {
+            $query->whereIn('device_id', Auth::user()->devices->pluck('id'));
+        }
+
+        // 期間に応じたデータの取得
+        $data = match ($displayType) {
+            'daily' => $this->getDailyData($query, $year, $month, $day),
+            'monthly' => $this->getMonthlyData($query, $year, $month),
+            'yearly' => $this->getYearlyData($query, $year),
+            'all' => $this->getAllData($query),
+            default => $this->getDailyData($query, $year, $month, $day),
+        };
+
+        // Chart.js形式のデータに変換
+        $chartData = [
+            'labels' => $data['labels'],
+            'datasets' => [[
+                'label' => '発電量',
+                'data' => $data['data'],
+                'borderColor' => '#4B5563',
+                'backgroundColor' => 'rgba(75, 85, 99, 0.1)',
+                'tension' => 0.1
+            ]]
+        ];
+
+        // 統計データを追加
+        $response = [
+            'chartData' => $chartData,
+            'stats' => [
+                'total' => $data['total'],
+                'average' => $data['average'],
+                'max' => $data['max']
+            ]
+        ];
+
+        return response()->json($response);
+    }
+
     private function getDailyData($query, $year, $month, $day)
     {
         $date = CarbonImmutable::create($year, $month, $day);
