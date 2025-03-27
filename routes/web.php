@@ -29,6 +29,6 @@ Route::middleware('auth')->group(function () {
     // PowerChartのLivewireルートを削除
     // Route::get('/power-chart', PowerChart::class)->name('power-chart');
 });
-
+    
 
 require __DIR__ . '/auth.php';
