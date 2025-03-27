@@ -191,12 +191,19 @@
                 deviceId: document.getElementById('deviceId').value
             });
 
-            fetch(`/dashboard?${params.toString()}`, {
+            // 絶対パスを使用するように修正
+            const baseUrl = '{{ url('/') }}'; // LaravelのURL生成ヘルパーを使用
+            fetch(`${baseUrl}/dashboard?${params.toString()}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 initChart(data);
                 document.getElementById('totalPower').textContent = data.total.toFixed(2);
@@ -205,7 +212,10 @@
                 document.getElementById('co2Reduction').textContent = data.co2Reduction.toFixed(2);
                 document.getElementById('electricityCost').textContent = Math.round(data.electricityCost).toLocaleString();
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                alert('データの更新中にエラーが発生しました。');
+            });
         }
 
         // イベントリスナーの設定
