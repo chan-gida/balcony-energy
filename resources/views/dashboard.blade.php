@@ -101,7 +101,7 @@
     @push('scripts')
     <script>
         // APIのURLを定数として定義（サブディレクトリを考慮）
-        const CHART_API_URL = "{{ url('/chart-data') }}";
+        const CHART_API_URL = "{{ url('/balcony-energy/chart-data') }}";
         let chart = null;
 
         // グラフの初期化
@@ -206,7 +206,15 @@
                 return response.json();
             })
             .then(data => {
-                initChart(data);
+                // データ構造を変換
+                const chartData = {
+                    labels: data.chartData.labels,
+                    data: data.chartData.datasets[0].data,
+                    color: data.chartData.datasets[0].borderColor,
+                    unit: data.unit
+                };
+                
+                initChart(chartData);
                 document.getElementById('totalPower').textContent = data.stats.total.toFixed(2);
                 document.getElementById('averagePower').textContent = data.stats.average.toFixed(2);
                 document.getElementById('maxPower').textContent = data.stats.max.toFixed(2);
