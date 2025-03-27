@@ -1,9 +1,22 @@
+# テスト用のルールを最初に配置
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    RewriteRule ^test-rewrite$ test-success.html [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    ErrorDocument 404 /mod-rewrite-not-enabled.html
+</IfModule>
+
+# 既存のLaravelルール
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
+    RewriteBase /
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -12,9 +25,6 @@
     # Handle X-XSRF-Token Header
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
-
-    # サブディレクトリがある場合は、以下の行を追加
-    RewriteBase /
 
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
@@ -25,11 +35,4 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
-
-    RewriteRule ^test-rewrite$ test-success.html [L]
-</IfModule>
-
-# mod_rewriteが無効な場合の処理
-<IfModule !mod_rewrite.c>
-    ErrorDocument 404 /mod-rewrite-not-enabled.html
 </IfModule>
