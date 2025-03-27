@@ -100,6 +100,8 @@
 
     @push('scripts')
     <script>
+        // APIのURLを定数として定義（サブディレクトリを考慮）
+        const CHART_API_URL = "{{ url('/balcony-energy/chart-data') }}";
         let chart = null;
 
         // グラフの初期化
@@ -188,24 +190,33 @@
                 year: document.getElementById('year').value,
                 month: document.getElementById('month').value,
                 day: document.getElementById('day').value,
-                deviceId: document.getElementById('deviceId').value
+                device: document.getElementById('deviceId').value // deviceIdをdeviceに変更
             });
 
-            fetch(`/dashboard?${params.toString()}`, {
+            // 新しいAPIエンドポイントを使用
+            fetch(`${CHART_API_URL}?${params.toString()}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 initChart(data);
-                document.getElementById('totalPower').textContent = data.total.toFixed(2);
-                document.getElementById('averagePower').textContent = data.average.toFixed(2);
-                document.getElementById('maxPower').textContent = data.max.toFixed(2);
+                document.getElementById('totalPower').textContent = data.stats.total.toFixed(2);
+                document.getElementById('averagePower').textContent = data.stats.average.toFixed(2);
+                document.getElementById('maxPower').textContent = data.stats.max.toFixed(2);
                 document.getElementById('co2Reduction').textContent = data.co2Reduction.toFixed(2);
                 document.getElementById('electricityCost').textContent = Math.round(data.electricityCost).toLocaleString();
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                alert('データの更新中にエラーが発生しました。');
+            });
         }
 
         // イベントリスナーの設定

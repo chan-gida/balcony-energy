@@ -12,8 +12,8 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+    ->name('dashboard')
+    ->middleware(['auth', 'verified']);
 
 // PowerChartのデータを取得するためのAjaxエンドポイントを追加
 Route::get('/chart-data', [DashboardController::class, 'getChartData'])

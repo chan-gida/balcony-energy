@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,5 +33,11 @@ class AppServiceProvider extends ServiceProvider
         // Livewire::setAlpineImports([]);
         
         // 代わりに、app.jsでAlpineの初期化を制御することをお勧めします
+
+        // サブディレクトリのパスを設定
+        if ($this->app->environment('production')) {
+            URL::forceRootUrl(config('app.url'));
+            URL::forceScheme('https');
+        }
     }
 }
