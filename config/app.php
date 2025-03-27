@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'https://silverbat3.sakura.ne.jp'),
+    'url' => env('APP_URL', 'https://silverbat3.sakura.ne.jp/balcony-energy'),
 
     /*
     |--------------------------------------------------------------------------
