@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('devices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete(); //追加：ユーザーID
-            $table->string('device_name'); //追加：デバイス名
-            $table->string('sensor_id'); //追加：センサーID
+            $table->string('device_name'); //追加：機器名
+            $table->string('facility_maker'); //追加：機器メーカー
+            $table->string('facility_name'); //追加：センサーID
             $table->string('api_token')->default(0); //追加：デバイス認識用トークン
             $table->timestamps();
         });

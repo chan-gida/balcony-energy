@@ -18,7 +18,12 @@
 
                     {{-- センサー登録へのリンクを追加 --}}
                     <x-nav-link :href="route('devices.index')" :active="request()->routeIs('devices.index')">
-                        {{ __('機器情報') }}
+                        {{ __('登録機器') }}
+                    </x-nav-link>
+
+                    {{-- みんなの発電へのリンクを追加 --}}
+                    <x-nav-link :href="route('public.generation')" :active="request()->routeIs('public.generation')">
+                        {{ __('みんなの発電') }}
                     </x-nav-link>
                 </div>
             </div>
@@ -74,6 +79,14 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('発電状況') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('devices.index')" :active="request()->routeIs('devices.index')">
+                {{ __('登録機器') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('public.generation')" :active="request()->routeIs('public.generation')">
+                {{ __('みんなの発電') }}
             </x-responsive-nav-link>
         </div>
 

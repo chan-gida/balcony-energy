@@ -47,6 +47,38 @@
             @endif
         </div>
 
+        <!-- 居住地設定フォームを追加 -->
+        <div>
+            <x-input-label for="region_id" :value="__('居住地')" />
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <select id="prefecture" name="prefecture" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" required>
+                        <option value="">都道府県を選択</option>
+                        @foreach($regions->unique('prefecture_name') as $region)
+                            <option value="{{ $region->prefecture_name }}" 
+                                {{ $user->regions->first()?->prefecture_name === $region->prefecture_name ? 'selected' : '' }}>
+                                {{ $region->prefecture_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <x-input-error class="mt-2" :messages="$errors->get('prefecture')" />
+                </div>
+                <div>
+                    <select id="region_id" name="region_id" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" required>
+                        <option value="">市区町村を選択</option>
+                        @if($user->regions->first())
+                            @foreach($regions->where('prefecture_name', $user->regions->first()->prefecture_name) as $region)
+                                <option value="{{ $region->id }}" {{ $user->regions->first()?->id === $region->id ? 'selected' : '' }}>
+                                    {{ $region->town_name }}
+                                </option>
+                            @endforeach
+                        @endif
+                    </select>
+                    <x-input-error class="mt-2" :messages="$errors->get('region_id')" />
+                </div>
+            </div>
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('更新') }}</x-primary-button>
 
@@ -62,3 +94,29 @@
         </div>
     </form>
 </section>
+
+@push('scripts')
+<script>
+document.getElementById('prefecture').addEventListener('change', function() {
+    const prefecture = this.value;
+    const regionSelect = document.getElementById('region_id');
+    
+    // 市区町村の選択をリセット
+    regionSelect.innerHTML = '<option value="">市区町村を選択</option>';
+    
+    if (prefecture) {
+        // 選択された都道府県に基づいて市区町村を取得
+        fetch(`/api/regions/towns?prefecture=${encodeURIComponent(prefecture)}`)
+            .then(response => response.json())
+            .then(regions => {
+                regions.forEach(region => {
+                    const option = document.createElement('option');
+                    option.value = region.id;
+                    option.textContent = region.town_name;
+                    regionSelect.appendChild(option);
+                });
+            });
+    }
+});
+</script>
+@endpush

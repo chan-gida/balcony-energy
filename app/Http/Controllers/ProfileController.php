@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
+use App\Models\Region;
 
 class ProfileController extends Controller
 {
@@ -18,6 +19,7 @@ class ProfileController extends Controller
     {
         return view('profile.edit', [
             'user' => $request->user(),
+            'regions' => Region::orderBy('region_num')->get(),
         ]);
     }
 
@@ -56,5 +58,15 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    // 市区町村取得用のAPIエンドポイント
+    public function getTowns(Request $request)
+    {
+        $regions = Region::where('prefecture_name', $request->prefecture)
+            ->orderBy('region_num')
+            ->get(['id', 'town_name']);
+        
+        return response()->json($regions);
     }
 }

@@ -16,15 +16,10 @@ class DeviceSeeder extends Seeder
         // 🔽 センサーデータを作成する
         Device::create([
             'user_id' => '1',
-            'device_name' => 'tanaka_rp',
-            'sensor_id' => 'INA260_a1',
+            'device_name' => 'tanaka_PV1',
+            'facility_maker' => 'AFERIY',
+            'facility_name' => 'ETFE 200W',
             'api_token' => 'AAAAAAAA'
-        ]);
-        Device::create([
-            'user_id' => '2',
-            'device_name' => 'yamamoto_rp',
-            'sensor_id' => 'INA260_a2',
-            'api_token' => 'BBBBBBBB'
         ]);
     }
 }

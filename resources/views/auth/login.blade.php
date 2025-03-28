@@ -1,4 +1,9 @@
 <x-guest-layout>
+    <!-- ロゴの追加 -->
+    <div class="flex justify-center mb-6">
+        <img src="{{ asset('images/logo.png') }}" alt="Service Logo" class="w-full max-w-md">
+    </div>
+
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
