@@ -25,6 +25,16 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            'prefecture' => ['required', 'exists:regions,id'],
+            'region_id' => [
+                'required',
+                'exists:regions,id',
+                function ($attribute, $value, $fail) {
+                    if ($this->input('prefecture') && !$value) {
+                        $fail('市区町村も選択してください');
+                    }
+                }
+            ],
         ];
     }
 }

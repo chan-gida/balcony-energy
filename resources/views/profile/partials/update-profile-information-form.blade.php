@@ -54,10 +54,10 @@
                 <div>
                     <select id="prefecture" name="prefecture" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" required>
                         <option value="">都道府県を選択</option>
-                        @foreach($regions->unique('prefecture_name') as $region)
-                            <option value="{{ $region->prefecture_name }}" 
-                                {{ $user->regions->first()?->prefecture_name === $region->prefecture_name ? 'selected' : '' }}>
-                                {{ $region->prefecture_name }}
+                        @foreach($prefectures as $prefecture)
+                            <option value="{{ $prefecture->id }}" 
+                                {{ $user->regions->first()?->prefecture_num === $prefecture->prefecture_num ? 'selected' : '' }}>
+                                {{ $prefecture->name }}
                             </option>
                         @endforeach
                     </select>
@@ -67,9 +67,9 @@
                     <select id="region_id" name="region_id" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" required>
                         <option value="">市区町村を選択</option>
                         @if($user->regions->first())
-                            @foreach($regions->where('prefecture_name', $user->regions->first()->prefecture_name) as $region)
-                                <option value="{{ $region->id }}" {{ $user->regions->first()?->id === $region->id ? 'selected' : '' }}>
-                                    {{ $region->town_name }}
+                            @foreach($towns as $town)
+                                <option value="{{ $town->id }}" {{ $user->regions->first()->id === $town->id ? 'selected' : '' }}>
+                                    {{ $town->town_name }}
                                 </option>
                             @endforeach
                         @endif
@@ -97,26 +97,32 @@
 
 @push('scripts')
 <script>
-document.getElementById('prefecture').addEventListener('change', function() {
-    const prefecture = this.value;
-    const regionSelect = document.getElementById('region_id');
-    
-    // 市区町村の選択をリセット
-    regionSelect.innerHTML = '<option value="">市区町村を選択</option>';
-    
-    if (prefecture) {
-        // 選択された都道府県に基づいて市区町村を取得
-        fetch(`/api/regions/towns?prefecture=${encodeURIComponent(prefecture)}`)
-            .then(response => response.json())
-            .then(regions => {
-                regions.forEach(region => {
+    document.addEventListener('DOMContentLoaded', function() {
+        const prefectureSelect = document.getElementById('prefecture');
+        const regionSelect = document.getElementById('region_id');
+
+        prefectureSelect.addEventListener('change', async function() {
+            const prefectureId = this.value;
+            if (!prefectureId) {
+                regionSelect.innerHTML = '<option value="">市区町村を選択</option>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`{{ route('profile.towns') }}?prefecture_id=${prefectureId}`);
+                const towns = await response.json();
+
+                regionSelect.innerHTML = '<option value="">市区町村を選択</option>';
+                towns.forEach(town => {
                     const option = document.createElement('option');
-                    option.value = region.id;
-                    option.textContent = region.town_name;
+                    option.value = town.id;
+                    option.textContent = town.name;
                     regionSelect.appendChild(option);
                 });
-            });
-    }
-});
+            } catch (error) {
+                console.error('市区町村データの取得に失敗しました:', error);
+            }
+        });
+    });
 </script>
 @endpush

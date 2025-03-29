@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('regions', function (Blueprint $table) {
             $table->id();
+            $table->integer('prefecture_num'); // 県番号を整数型で定義
             $table->integer('region_num'); // 地域番号を整数型で定義
             $table->string('prefecture_name'); // 都道府県名を文字列型で定義
             $table->string('town_name'); // 市町村名を文字列型で定義

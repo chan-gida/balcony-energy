@@ -8,7 +8,7 @@
   <div class="py-4">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div class="flex justify-left">
-        <a href="{{ route('devices.create', $devices) }}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+        <a href="{{ route('devices.create', $devices) }}" class="bg-[#f1a746] hover:bg-[#e69a3a] text-white font-bold py-2 px-4 rounded">
           新規登録
         </a>
       </div>
@@ -38,7 +38,7 @@
                       <td class="w-1/4 px-6 py-4 text-sm text-gray-800 dark:text-gray-300">{{ $device->facility_maker }}</td>
                       <td class="w-1/4 px-6 py-4 text-sm text-gray-800 dark:text-gray-300">{{ $device->facility_name }}</td>
                       <td class="w-1/6 px-6 py-4 text-sm">
-                        <a href="{{ route('devices.show', $device) }}" class="text-blue-500 hover:text-blue-700">詳細を見る</a>
+                        <a href="{{ route('devices.show', $device) }}" class="text-[#3a7682] hover:text-[#2a8f87]">詳細を見る</a>
                       </td>
                     </tr>
                     @endforeach

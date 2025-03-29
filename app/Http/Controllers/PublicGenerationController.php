@@ -15,15 +15,26 @@ class PublicGenerationController extends Controller
     public function index()
     {
         try {
+            Log::debug('PublicGenerationController@index: Starting method execution', [
+                'request' => request()->all(),
+                'session' => session()->all(),
+                'user' => auth()->user() ? auth()->user()->toArray() : null
+            ]);
 
-            // 都道府県一覧を取得（region_numの1万桁以上の数値でグループ化）
-            $prefectures = Region::select('prefecture_name as name', 'id')
-                ->selectRaw('FLOOR(region_num/10000) as prefecture_code')
+            // 都道府県一覧を取得（prefecture_numでグループ化）
+            $prefectures = Region::select('prefecture_name as name')
+                ->selectRaw('MIN(id) as id')
+                ->selectRaw('MIN(prefecture_num) as prefecture_num')
                 ->whereNotNull('prefecture_name')
-                ->whereRaw('region_num >= 10000')  // 1万以上の数値のみを対象
-                ->groupBy('prefecture_code')  // 都道府県コードでグループ化
-                ->orderBy('prefecture_code')  // 都道府県コード順（01-47）で並び替え
+                ->groupBy('prefecture_name')
+                ->orderBy('prefecture_num')
                 ->get();
+
+            // 都道府県データのデバッグ
+            Log::debug('Prefecture data:', [
+                'count' => $prefectures->count(),
+                'data' => $prefectures->toArray()
+            ]);
 
             // デバイスのメーカー一覧を取得
             $manufacturers = Device::select('facility_maker as manufacturer')
@@ -39,6 +50,12 @@ class PublicGenerationController extends Controller
                 ->orderBy('facility_name')
                 ->get();
 
+            Log::debug('View data:', [
+                'prefectures_count' => $prefectures->count(),
+                'manufacturers_count' => $manufacturers->count(),
+                'models_count' => $models->count()
+            ]);
+
             return view('public-generation', [
                 'prefectures' => $prefectures,
                 'manufacturers' => $manufacturers,
@@ -49,7 +66,9 @@ class PublicGenerationController extends Controller
                 'currentDay' => now()->day,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error in PublicGenerationController@index: ' . $e->getMessage());
+            Log::error('Error in PublicGenerationController@index: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()->with('error', 'データの取得に失敗しました');
         }
     }
@@ -62,18 +81,17 @@ class PublicGenerationController extends Controller
         try {
             $prefectureId = $request->input('prefecture_id');
 
-            // 都道府県コードを取得
-            $prefectureCode = Region::where('id', $prefectureId)
-                ->selectRaw('FLOOR(region_num/10000) as prefecture_code')
-                ->value('prefecture_code');
+            // 選択された都道府県のprefecture_numを取得
+            $prefectureNum = Region::where('id', $prefectureId)
+                ->value('prefecture_num');
 
-            if (!$prefectureCode) {
+            if (!$prefectureNum) {
                 return response()->json([]);
             }
 
-            // 指定された都道府県コードに属する市町村を取得
+            // 指定されたprefecture_numに属する市町村を取得
             $towns = Region::select('id', 'town_name as name')
-                ->whereRaw('FLOOR(region_num/10000) = ?', [$prefectureCode])
+                ->where('prefecture_num', $prefectureNum)
                 ->whereNotNull('town_name')
                 ->orderBy('region_num')
                 ->get();
@@ -122,49 +140,81 @@ class PublicGenerationController extends Controller
             // 基本クエリの構築
             $query = Generation::query()
                 ->select('generations.*')  // generationsテーブルの全カラムを明示的に選択
-                ->leftJoin('devices', 'generations.device_id', '=', 'devices.id')
-                ->leftJoin('users', 'devices.user_id', '=', 'users.id')
-                ->leftJoin('region_user', 'users.id', '=', 'region_user.user_id')
-                ->leftJoin('regions', 'region_user.region_id', '=', 'regions.id');
+                ->distinct();  // 重複を排除
 
-            // データ件数のデバッグ
-            $generationCount = Generation::count();
-            $deviceCount = Device::count();
-            $regionCount = Region::count();
-            $regionUserCount = DB::table('region_user')->count();
+            // 期間フィルターを先に適用
+            $displayType = $request->input('periodType', 'all');
+            $year = $request->input('year', now()->year);
+            $month = $request->input('month', now()->month);
+            $day = $request->input('day', now()->day);
 
-            Log::debug('Table counts:', [
-                'generations' => $generationCount,
-                'devices' => $deviceCount,
-                'regions' => $regionCount,
-                'region_user' => $regionUserCount
-            ]);
+            switch ($displayType) {
+                case 'daily':
+                    $query->whereDate('generation_time', CarbonImmutable::create($year, $month, $day));
+                    break;
+                case 'monthly':
+                    $query->whereYear('generation_time', $year)
+                        ->whereMonth('generation_time', $month);
+                    break;
+                case 'yearly':
+                    $query->whereYear('generation_time', $year);
+                    break;
+            }
 
             // 地域フィルター
+            $regionType = $request->input('regionType', 'all');
+            $prefecture = $request->input('prefecture');
+            $city = $request->input('city');
+            
             if ($regionType === 'prefecture' && $prefecture) {
-                $query->whereExists(function ($subquery) use ($prefecture) {
-                    $subquery->select(DB::raw(1))
-                        ->from('regions')
-                        ->whereColumn('regions.id', 'region_user.region_id')
-                        ->where('regions.id', $prefecture);
-                });
+                // 選択された都道府県のprefecture_numを取得
+                $prefectureNum = Region::where('id', $prefecture)
+                    ->value('prefecture_num');
+
+                if ($prefectureNum) {
+                    // 同じprefecture_numを持つ全てのregion.idを取得
+                    $regionIds = Region::where('prefecture_num', $prefectureNum)
+                        ->pluck('id');
+
+                    // 取得したregion.idと紐づいたgenerationデータを取得
+                    $query->join('devices', 'generations.device_id', '=', 'devices.id')
+                        ->join('users', 'devices.user_id', '=', 'users.id')
+                        ->join('region_user', 'users.id', '=', 'region_user.user_id')
+                        ->whereIn('region_user.region_id', $regionIds);
+                }
             } elseif ($regionType === 'city' && $city) {
-                $query->where('regions.id', $city);
+                // 選択された市町村のregion_numを取得
+                $regionNum = Region::where('id', $city)
+                    ->value('region_num');
+
+                if ($regionNum) {
+                    // 同じregion_numを持つregion.idを取得
+                    $regionId = Region::where('region_num', $regionNum)
+                        ->value('id');
+
+                    // 取得したregion.idと紐づいたgenerationデータを取得
+                    $query->join('devices', 'generations.device_id', '=', 'devices.id')
+                        ->join('users', 'devices.user_id', '=', 'users.id')
+                        ->join('region_user', 'users.id', '=', 'region_user.user_id')
+                        ->where('region_user.region_id', $regionId);
+                }
             }
 
             // デバイスフィルター
+            $deviceType = $request->input('deviceType', 'all');
+            $manufacturer = $request->input('manufacturer');
+            $modelNumber = $request->input('modelNumber');
+
             if ($deviceType === 'manufacturer' && $manufacturer) {
                 $query->where('devices.facility_maker', $manufacturer);
             } elseif ($deviceType === 'model' && $modelNumber) {
                 $query->where('devices.facility_name', $modelNumber);
             }
 
-            // クエリのデバッグ
-            $debugQuery = $query->toSql();
-            $debugBindings = $query->getBindings();
-            Log::debug('Generated SQL:', [
-                'query' => $debugQuery,
-                'bindings' => $debugBindings
+            // デバッグ用のクエリログ
+            Log::debug('Final SQL Query:', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
             ]);
 
             // クエリ実行前の件数確認
@@ -179,18 +229,6 @@ class PublicGenerationController extends Controller
                 'all' => $this->getAllData($query),
                 default => $this->getAllData($query),  // デフォルトを全期間に変更
             };
-
-            // 結果のデバッグ
-            Log::debug('Query result:', [
-                'displayType' => $displayType,
-                'total' => $data['total'],
-                'labels' => $data['labels'],
-                'data' => $data['data']
-            ]);
-
-            // CO2削減量と電気代削減量の計算
-            $co2Reduction = $data['total'] * 0.472;
-            $electricityCost = $data['total'] * 27;
 
             return response()->json([
                 'chartData' => [
@@ -209,12 +247,11 @@ class PublicGenerationController extends Controller
                     'max' => $data['max']
                 ],
                 'unit' => $data['unit'],
-                'co2Reduction' => $co2Reduction,
-                'electricityCost' => $electricityCost
+                'co2Reduction' => $data['total'] * 0.472
             ]);
+
         } catch (\Exception $e) {
             Log::error('Error in PublicGenerationController@getData: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json(['error' => 'データの取得に失敗しました: ' . $e->getMessage()], 500);
         }
     }

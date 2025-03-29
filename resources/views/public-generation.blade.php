@@ -1,4 +1,4 @@
-<x-guest-layout>
+<x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
             {{ __('みんなの発電') }}
@@ -52,9 +52,25 @@
 
                             <div id="regionSelectors" class="space-y-2">
                                 <select id="prefecture" class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 hidden">
-                                    @foreach($prefectures as $prefecture)
-                                        <option value="{{ $prefecture->id }}">{{ $prefecture->name }}</option>
-                                    @endforeach
+                                    <option value="">都道府県を選択</option>
+                                    @php
+                                        Log::debug('Prefecture options in blade:', [
+                                            'count' => count($prefectures),
+                                            'prefectures' => $prefectures->toArray(),
+                                            'is_collection' => $prefectures instanceof \Illuminate\Support\Collection,
+                                            'is_array' => is_array($prefectures),
+                                            'is_object' => is_object($prefectures)
+                                        ]);
+                                    @endphp
+                                    @if($prefectures && count($prefectures) > 0)
+                                        @foreach($prefectures as $prefecture)
+                                            <option value="{{ $prefecture->id }}">{{ $prefecture->name }}</option>
+                                        @endforeach
+                                    @else
+                                        @php
+                                            Log::warning('No prefecture data available in blade template');
+                                        @endphp
+                                    @endif
                                 </select>
 
                                 <select id="city" class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 hidden">
@@ -94,22 +110,21 @@
                     </div>
 
                     <!-- 集計値表示エリア -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg shadow">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">総発電量</h3>
-                            <p class="text-3xl font-bold text-gray-700 dark:text-gray-300">
+                            <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
                                 <span id="totalGeneration">0</span>
                                 <span class="text-base">kWh</span>
                             </p>
                         </div>
-                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg shadow">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">CO2削減量</h3>
-                            <p class="text-3xl font-bold text-gray-700 dark:text-gray-300">
+                        <div class="bg-[#e0f7de] dark:bg-green-900 p-4 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold text-green-900 dark:text-green-100">総CO2削減量</h3>
+                            <p class="text-3xl font-bold text-green-900 dark:text-green-100">
                                 <span id="co2Reduction">0</span>
                                 <span class="text-base">kg</span>
                             </p>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -164,7 +179,6 @@
             // 集計値の更新
             document.getElementById('totalGeneration').textContent = data.stats.total.toFixed(2);
             document.getElementById('co2Reduction').textContent = data.co2Reduction.toFixed(2);
-            document.getElementById('electricityCost').textContent = Math.round(data.electricityCost).toLocaleString();
         }
 
         // データの更新
@@ -183,11 +197,19 @@
                     modelNumber: document.getElementById('modelNumber').value
                 };
 
+                // パラメータのデバッグ出力
+                console.log('Request parameters:', params);
+                console.log('Region selection state:', {
+                    regionType: params.regionType,
+                    prefecture: params.prefecture,
+                    prefectureSelect: document.getElementById('prefecture').innerHTML
+                });
+
                 const response = await fetch(`${CHART_API_URL}?${new URLSearchParams(params)}`);
                 const data = await response.json();
 
                 if (data.error) {
-                    console.error(data.error);
+                    console.error('API Error:', data.error);
                     return;
                 }
 
@@ -197,19 +219,40 @@
             }
         }
 
+        // 地域選択の表示制御
+        function updateRegionSelectors() {
+            const type = document.getElementById('regionType').value;
+            const prefectureSelect = document.getElementById('prefecture');
+            const citySelect = document.getElementById('city');
+
+            console.log('Updating region selectors:', {
+                type: type,
+                prefectureVisible: ['prefecture', 'city'].includes(type),
+                prefectureValue: prefectureSelect.value,
+                prefectureOptions: prefectureSelect.innerHTML
+            });
+
+            // 都道府県と市町村の表示制御
+            prefectureSelect.classList.toggle('hidden', !['prefecture', 'city'].includes(type));
+            citySelect.classList.toggle('hidden', type !== 'city');
+
+            // 市町村が非表示の場合は、その値をクリア
+            if (type !== 'city') {
+                citySelect.value = '';
+            }
+
+            // 都道府県が非表示の場合は、その値をクリア
+            if (!['prefecture', 'city'].includes(type)) {
+                prefectureSelect.value = '';
+            }
+        }
+
         // 期間選択の表示制御
         function updatePeriodSelectors() {
             const type = document.getElementById('periodType').value;
             document.getElementById('year').classList.toggle('hidden', !['yearly', 'monthly', 'daily'].includes(type));
             document.getElementById('month').classList.toggle('hidden', !['monthly', 'daily'].includes(type));
             document.getElementById('day').classList.toggle('hidden', type !== 'daily');
-        }
-
-        // 地域選択の表示制御
-        function updateRegionSelectors() {
-            const type = document.getElementById('regionType').value;
-            document.getElementById('prefecture').classList.toggle('hidden', !['prefecture', 'city'].includes(type));
-            document.getElementById('city').classList.toggle('hidden', type !== 'city');
         }
 
         // 機器選択の表示制御
@@ -244,8 +287,10 @@
 
         // イベントリスナーの設定
         document.addEventListener('DOMContentLoaded', function() {
-            // 初期データでグラフを描画
-            updateChart();
+            // 初期表示の設定
+            updatePeriodSelectors();
+            updateRegionSelectors();
+            updateDeviceSelectors();
 
             // 各セレクターの変更イベントを監視
             document.getElementById('periodType').addEventListener('change', () => {
@@ -253,9 +298,23 @@
                 updateChart();
             });
 
-            document.getElementById('regionType').addEventListener('change', () => {
+            document.getElementById('regionType').addEventListener('change', async () => {
+                // 地域タイプの変更を処理
                 updateRegionSelectors();
-                updateChart();
+                
+                // 都道府県セレクターの状態を確認
+                const prefectureSelect = document.getElementById('prefecture');
+                const prefectureOptions = prefectureSelect.innerHTML.trim();
+                
+                console.log('Prefecture options after update:', {
+                    hasOptions: prefectureOptions.length > 0,
+                    optionsContent: prefectureOptions
+                });
+
+                // 都道府県セレクターが表示され、オプションが存在する場合のみチャートを更新
+                if (!prefectureSelect.classList.contains('hidden') && prefectureOptions.length > 0) {
+                    updateChart();
+                }
             });
 
             document.getElementById('deviceType').addEventListener('change', () => {
@@ -275,11 +334,9 @@
 
             document.getElementById('city').addEventListener('change', updateChart);
 
-            // 初期表示の設定
-            updatePeriodSelectors();
-            updateRegionSelectors();
-            updateDeviceSelectors();
+            // 初期データでグラフを描画
+            updateChart();
         });
     </script>
     @endpush
-</x-guest-layout> 
+</x-app-layout> 
