@@ -24,7 +24,7 @@ class DashboardController extends Controller
 
             // デバイスの色を動的に生成
             $deviceColors = ['all' => '#4B5563']; // デフォルトの色（全デバイス）
-            
+
             // HSL色空間を使用して、均等に分布した色を生成
             $devices->each(function ($device, $index) use (&$deviceColors, $devices) {
                 // 色相を均等に分布させる（0-360度）
@@ -32,7 +32,7 @@ class DashboardController extends Controller
                 // 彩度と明度は固定値を使用して見やすい色を生成
                 $saturation = 70; // 70%
                 $lightness = 50;  // 50%
-                
+
                 // HSLからHEXに変換
                 $deviceColors[$device->id] = $this->hslToHex($hue, $saturation, $lightness);
             });
@@ -85,11 +85,11 @@ class DashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Dashboard error: ' . $e->getMessage());
-            
+
             if ($request->ajax()) {
                 return response()->json(['error' => 'データの取得に失敗しました'], 500);
             }
-            
+
             return back()->with('error', 'データの取得に失敗しました');
         }
     }
@@ -166,7 +166,7 @@ class DashboardController extends Controller
     private function getDailyData($query, $year, $month, $day)
     {
         $date = CarbonImmutable::create($year, $month, $day);
-        
+
         // 0時から23時までの全時間帯を作成
         $hours = collect(range(0, 23))->mapWithKeys(function ($hour) {
             $timeStr = sprintf('%02d:00', $hour);
@@ -278,14 +278,14 @@ class DashboardController extends Controller
         if ($saturation == 0) {
             $red = $green = $blue = $lightness;
         } else {
-            $q = $lightness < 0.5 
-                ? $lightness * (1 + $saturation) 
+            $q = $lightness < 0.5
+                ? $lightness * (1 + $saturation)
                 : $lightness + $saturation - $lightness * $saturation;
             $p = 2 * $lightness - $q;
 
-            $red = $this->hueToRgb($p, $q, $hue + 1/3);
+            $red = $this->hueToRgb($p, $q, $hue + 1 / 3);
             $green = $this->hueToRgb($p, $q, $hue);
-            $blue = $this->hueToRgb($p, $q, $hue - 1/3);
+            $blue = $this->hueToRgb($p, $q, $hue - 1 / 3);
         }
 
         $red = round($red * 255);
@@ -299,9 +299,9 @@ class DashboardController extends Controller
     {
         if ($t < 0) $t += 1;
         if ($t > 1) $t -= 1;
-        if ($t < 1/6) return $p + ($q - $p) * 6 * $t;
-        if ($t < 1/2) return $q;
-        if ($t < 2/3) return $p + ($q - $p) * (2/3 - $t) * 6;
+        if ($t < 1 / 6) return $p + ($q - $p) * 6 * $t;
+        if ($t < 1 / 2) return $q;
+        if ($t < 2 / 3) return $p + ($q - $p) * (2 / 3 - $t) * 6;
         return $p;
     }
-} 
+}

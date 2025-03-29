@@ -123,6 +123,7 @@
 
             // 日単位表示の場合のオプション
             const isDaily = displayType === 'daily';
+            const isMonthly = displayType === 'monthly';
             const scales = {
                 y: {
                     beginAtZero: true,
@@ -139,8 +140,8 @@
                         display: true,
                         text: data.unit
                     },
-                    // 日単位の場合は追加の設定
-                    ticks: isDaily ? {
+                    // 日単位または月単位の場合は追加の設定
+                    ticks: (isDaily || isMonthly) ? {
                         maxRotation: 45,
                         minRotation: 45
                     } : {}
