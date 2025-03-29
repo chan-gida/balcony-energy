@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('発電状況') }}
+            {{ __('ホーム:発電状況') }}
         </h2>
     </x-slot>
 
@@ -78,19 +78,19 @@
 
                     <!-- CO2削減量と電気代削減量 -->
                     <div class="mt-4 flex justify-between gap-4">
-                        <div class="flex-1 p-4 bg-green-50 dark:bg-green-900 rounded-lg">
+                        <div class="flex-1 p-4 bg-[#e0f7de] dark:bg-green-900 rounded-lg">
                             <h3 class="text-lg font-semibold text-green-900 dark:text-green-100">総CO2削減量</h3>
                             <p class="text-2xl font-bold text-green-900 dark:text-green-100">
                                 <span id="co2Reduction">{{ number_format($co2Reduction, 2) }}</span> kg-CO2
                             </p>
                             <p class="text-sm text-green-700 dark:text-green-300">※ 1kWhあたり0.472kg-CO2として計算</p>
                         </div>
-                        <div class="flex-1 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-                            <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100">総電気代削減量</h3>
-                            <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                        <div class="flex-1 p-4 bg-[#ffefd9] dark:bg-blue-900 rounded-lg">
+                            <h3 class="text-lg font-semibold text-[#6c3524] dark:text-blue-100">総電気代削減量</h3>
+                            <p class="text-2xl font-bold text-[#6c3524] dark:text-blue-100">
                                 <span id="electricityCost">{{ number_format($electricityCost, 0) }}</span> 円
                             </p>
-                            <p class="text-sm text-blue-700 dark:text-blue-300">※ 1kWhあたり27円として計算</p>
+                            <p class="text-sm text-[#6c3524] dark:text-blue-300">※ 1kWhあたり27円として計算</p>
                         </div>
                     </div>
                 </div>

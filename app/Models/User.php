@@ -63,4 +63,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Device::class);
     }
+
+        public function regions()
+    {
+        return $this->belongsToMany(Region::class);
+    }
 }

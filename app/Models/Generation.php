@@ -18,7 +18,7 @@ class Generation extends Model
         'power'
     ];
 
-    //Userモデルとのリレーション・１対多を規定
+    //Userモデルとのリレーション・多対１を規定
     public function user()
     {
         return $this->belongsTo(User::class);

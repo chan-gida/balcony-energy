@@ -12,13 +12,18 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" class="font-bold">
                         {{ __('ホーム') }}
                     </x-nav-link>
 
                     {{-- センサー登録へのリンクを追加 --}}
-                    <x-nav-link :href="route('devices.index')" :active="request()->routeIs('devices.index')">
-                        {{ __('機器情報') }}
+                    <x-nav-link :href="route('devices.index')" :active="request()->routeIs('devices.index')" class="font-bold">
+                        {{ __('登録機器') }}
+                    </x-nav-link>
+
+                    {{-- みんなの発電へのリンクを追加 --}}
+                    <x-nav-link :href="route('public.generation')" :active="request()->routeIs('public.generation')" class="font-bold">
+                        {{ __('みんなの発電') }}
                     </x-nav-link>
                 </div>
             </div>
@@ -72,8 +77,16 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('発電状況') }}
+            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" class="font-bold">
+                {{ __('ホーム:発電状況') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('devices.index')" :active="request()->routeIs('devices.index')" class="font-bold">
+                {{ __('登録機器') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('public.generation')" :active="request()->routeIs('public.generation')" class="font-bold">
+                {{ __('みんなの発電') }}
             </x-responsive-nav-link>
         </div>
 
